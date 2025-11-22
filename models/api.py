@@ -122,6 +122,23 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = Field(None, description="Detailed error information")
 
 
+class ChatRequest(BaseModel):
+    """Request model for chat endpoint."""
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="User message describing the plumbing job"
+    )
+
+
+class ChatResponse(BaseModel):
+    """Response model for chat endpoint."""
+    response: str = Field(description="AI response text")
+    estimate: Optional[dict] = Field(None, description="Cost and time estimate if job was described")
+    features: Optional[dict] = Field(None, description="Extracted features if applicable")
+
+
 # API Endpoints
 @app.get("/")
 async def root():
@@ -229,6 +246,121 @@ async def estimate_job(request: EstimateRequest):
             detail={
                 "success": False,
                 "error": "Estimation failed",
+                "detail": str(e)
+            }
+        )
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """
+    Chat endpoint that handles conversational interactions and generates estimates.
+    
+    This endpoint:
+    1. Accepts a natural language message
+    2. Attempts to extract job features if the message describes work
+    3. Returns a conversational response with optional estimate
+    
+    Args:
+        request: ChatRequest containing user message
+        
+    Returns:
+        ChatResponse with conversational response and optional estimate
+    """
+    try:
+        message = request.message.lower()
+        
+        # Check if message seems to describe a job
+        job_keywords = ['fix', 'repair', 'install', 'replace', 'leak', 'pipe', 'drain', 
+                       'toilet', 'sink', 'shower', 'bath', 'faucet', 'water', 'plumbing']
+        
+        is_job_description = any(keyword in message for keyword in job_keywords)
+        
+        if is_job_description:
+            try:
+                # Get services
+                extractor = Services.get_extractor()
+                predictor = Services.get_predictor()
+                
+                # Extract features from message
+                features = extractor.extract_features(request.message)
+                
+                # Make prediction
+                prediction = predictor.predict(features)
+                
+                # Convert currency
+                cost_dzd = prediction['cost']
+                cost_gbp = dzd_to_gbp(cost_dzd)
+                time_days = prediction['time']
+                
+                estimate = {
+                    'cost_dzd': round(cost_dzd, 2),
+                    'cost_gbp': round(cost_gbp, 2),
+                    'time_days': round(time_days, 1),
+                }
+                
+                response_text = (
+                    f"I understand you need help with: {request.message}\n\n"
+                    f"Based on my analysis, here's what I estimate:\n"
+                    f"💰 Cost: £{estimate['cost_gbp']:.2f} (DZD {estimate['cost_dzd']:.2f})\n"
+                    f"⏱️ Time: {estimate['time_days']} days\n\n"
+                    f"This estimate is based on the specific details you provided. "
+                    f"Would you like me to explain any part of this estimate or do you have additional questions?"
+                )
+                
+                return ChatResponse(
+                    response=response_text,
+                    estimate=estimate,
+                    features=features
+                )
+                
+            except Exception as e:
+                # If estimation fails, still provide a helpful response
+                return ChatResponse(
+                    response=(
+                        f"I understand you're describing a plumbing job, but I need a bit more detail to provide "
+                        f"an accurate estimate. Could you tell me more about:\n"
+                        f"- The specific fixtures involved (toilet, sink, shower, etc.)\n"
+                        f"- The type/quality level you're looking for (standard, luxury, etc.)\n"
+                        f"- Any other relevant details about the work?"
+                    ),
+                    estimate=None,
+                    features=None
+                )
+        else:
+            # General conversation response
+            if any(word in message for word in ['hello', 'hi', 'hey']):
+                response_text = (
+                    "Hello! I'm your AI plumbing assistant. I can help you estimate costs and time "
+                    "for plumbing jobs. Just describe what you need done!"
+                )
+            elif any(word in message for word in ['help', 'what can you do']):
+                response_text = (
+                    "I can help you with plumbing job estimates! Just describe your plumbing needs:\n"
+                    "- Repairs (leaks, clogs, etc.)\n"
+                    "- Installations (toilets, sinks, showers, etc.)\n"
+                    "- Replacements or upgrades\n\n"
+                    "I'll analyze your description and provide cost and time estimates!"
+                )
+            elif any(word in message for word in ['thank', 'thanks']):
+                response_text = "You're welcome! Let me know if you need help with anything else!"
+            else:
+                response_text = (
+                    "I'm here to help with plumbing estimates! Could you describe the plumbing work "
+                    "you need done? Include details like fixtures, repairs, or installations you're considering."
+                )
+            
+            return ChatResponse(
+                response=response_text,
+                estimate=None,
+                features=None
+            )
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Chat processing failed",
                 "detail": str(e)
             }
         )

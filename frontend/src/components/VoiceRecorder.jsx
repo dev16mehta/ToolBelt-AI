@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export default function VoiceRecorder({ transcript, setTranscript }) {
+export default function VoiceRecorder({ transcript, setTranscript, onEstimateReceived }) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(true);
   const [conversationLog, setConversationLog] = useState([]);
@@ -74,9 +74,16 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
         text: data.response,
         sender: "assistant",
         timestamp: new Date(),
+        estimate: data.estimate, // Include estimate data if present
+        features: data.features  // Include extracted features if present
       };
 
       setConversationLog(prev => [...prev, aiMessage]);
+      
+      // If an estimate was generated, notify the parent component
+      if (data.estimate && onEstimateReceived) {
+        onEstimateReceived(data.estimate, data.features);
+      }
       
       // Speak the response if it was a voice interaction
       if (fromVoice && window.speechSynthesis) {
@@ -187,6 +194,28 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
               <div style={{ color: '#e5e7eb', lineHeight: '1.5', fontSize: '0.9rem' }}>
                 {message.text}
               </div>
+              {message.estimate && (
+                <div style={{ 
+                  marginTop: '10px',
+                  padding: '10px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(34, 197, 94, 0.3)'
+                }}>
+                  <div style={{ 
+                    fontWeight: 'bold', 
+                    color: '#22c55e',
+                    marginBottom: '6px',
+                    fontSize: '0.85rem'
+                  }}>
+                    💰 Estimate Generated:
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#e5e7eb' }}>
+                    <div>Cost: £{message.estimate.cost_gbp} (DZD {message.estimate.cost_dzd})</div>
+                    <div>Time: {message.estimate.time_days} days</div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {processing && (

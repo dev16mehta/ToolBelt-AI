@@ -13,6 +13,17 @@ export default function App() {
   const [transcript, setTranscript] = useState("");
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [aiEstimate, setAiEstimate] = useState(null); // Estimate from voice/chat
+
+  // Handler for when AI generates an estimate from voice/chat
+  const handleAiEstimate = (estimateData, features) => {
+    setAiEstimate({
+      cost_gbp: estimateData.cost_gbp,
+      cost_dzd: estimateData.cost_dzd,
+      time_days: estimateData.time_days,
+      features: features
+    });
+  };
 
   async function handleEstimate() {
     if (images.length === 0 && !transcript) {
@@ -129,13 +140,17 @@ export default function App() {
           {/* Right Card: Voice */}
           <div className="glass-card">
              <div className="card-header">
-              <div className="icon-box cyan">jq</div>
+              <div className="icon-box cyan">🎤</div>
               <div>
                 <h2 className="card-title">Voice Description</h2>
                 <p className="card-desc">Describe the job details</p>
               </div>
             </div>
-            <VoiceRecorder transcript={transcript} setTranscript={setTranscript} />
+            <VoiceRecorder 
+              transcript={transcript} 
+              setTranscript={setTranscript}
+              onEstimateReceived={handleAiEstimate}
+            />
           </div>
 
         </div>
@@ -145,6 +160,166 @@ export default function App() {
             {loading ? "Analyzing & Sourcing..." : "✨ Generate Quote & Materials"}
           </button>
         </div>
+
+        {/* Display AI-generated estimate from voice/chat */}
+        {aiEstimate && (
+          <div className="glass-card" style={{ marginTop: '20px' }}>
+            <div style={{ 
+              padding: '20px',
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.05))',
+              borderRadius: '12px',
+              border: '2px solid rgba(34, 197, 94, 0.3)'
+            }}>
+              <div style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ fontSize: '2rem' }}>💰</div>
+                <div>
+                  <h2 style={{ 
+                    color: '#22c55e',
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    margin: 0
+                  }}>
+                    AI-Generated Estimate
+                  </h2>
+                  <p style={{ 
+                    color: 'var(--text-muted)',
+                    fontSize: '0.9rem',
+                    margin: '4px 0 0 0'
+                  }}>
+                    Based on your description
+                  </p>
+                </div>
+              </div>
+              
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ 
+                  padding: '16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ 
+                    fontSize: '0.85rem',
+                    color: 'var(--text-muted)',
+                    marginBottom: '8px'
+                  }}>
+                    Cost (GBP)
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.8rem',
+                    fontWeight: 'bold',
+                    color: '#22c55e'
+                  }}>
+                    £{aiEstimate.cost_gbp.toFixed(2)}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  padding: '16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ 
+                    fontSize: '0.85rem',
+                    color: 'var(--text-muted)',
+                    marginBottom: '8px'
+                  }}>
+                    Cost (DZD)
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.8rem',
+                    fontWeight: 'bold',
+                    color: '#22c55e'
+                  }}>
+                    {aiEstimate.cost_dzd.toFixed(2)}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  padding: '16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ 
+                    fontSize: '0.85rem',
+                    color: 'var(--text-muted)',
+                    marginBottom: '8px'
+                  }}>
+                    Estimated Time
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.8rem',
+                    fontWeight: 'bold',
+                    color: '#22c55e'
+                  }}>
+                    {aiEstimate.time_days} days
+                  </div>
+                </div>
+              </div>
+
+              {aiEstimate.features && Object.keys(aiEstimate.features).length > 0 && (
+                <div style={{ 
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ 
+                    fontSize: '0.85rem',
+                    color: 'var(--text-muted)',
+                    marginBottom: '8px',
+                    fontWeight: 'bold'
+                  }}>
+                    Detected Features:
+                  </div>
+                  <div style={{ 
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}>
+                    {Object.entries(aiEstimate.features).map(([key, value]) => (
+                      <span key={key} style={{
+                        padding: '4px 12px',
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        borderRadius: '12px',
+                        fontSize: '0.8rem',
+                        color: '#22c55e'
+                      }}>
+                        {key}: {typeof value === 'boolean' ? (value ? '✓' : '✗') : value}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <button 
+                onClick={() => setAiEstimate(null)}
+                style={{
+                  marginTop: '16px',
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '6px',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  width: '100%'
+                }}
+              >
+                Clear Estimate
+              </button>
+            </div>
+          </div>
+        )}
 
         {estimate && <EstimateCard estimate={estimate} />}
       </main>
