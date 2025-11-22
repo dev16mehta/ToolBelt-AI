@@ -6,6 +6,14 @@
 - DIY construction
 - Individuals looking to start their own services business
 
+## Running thr Application 
+
+- To run the appication firstly clone the repository from git.
+- Then go into the frontend folder
+- run 'npm install'
+- wait for download to be completed, then run 'npm run dev' 
+- the webpage will be live on 'localhoost:5173'
+
 ## Plan
 
 ### Frontend
