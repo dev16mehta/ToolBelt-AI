@@ -1,0 +1,43 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Frontend folder node_modules (if using a frontend/ subfolder)
+frontend/node_modules/
+
+# Build / output
+dist/
+build/
+.vite/
+out/
+coverage/
+
+# Environment
+.env
+.env.*.local
+.env.local
+.env.production.local
+.env.test.local
+.envrc
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Misc
+*.tgz
+.cache
