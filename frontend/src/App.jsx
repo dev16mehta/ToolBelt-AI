@@ -1,3 +1,4 @@
+/* App.jsx */
 import React, { useState } from "react";
 import CameraCapture from "./components/CameraCapture";
 import VoiceRecorder from "./components/VoiceRecorder";
@@ -10,18 +11,21 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   async function handleEstimate() {
+    if(images.length === 0 && !transcript) {
+        alert("Please upload a photo or describe the job first.");
+        return;
+    }
     setLoading(true);
-    // Placeholder client-side estimator. Replace with API call to your agent.
+    // Placeholder logic simulation
     const result = generateEstimate(images, transcript);
-    // Simulate small delay
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 1500)); // Longer delay for effect
     setEstimate(result);
     setLoading(false);
   }
 
+  // (Keep your existing generateEstimate logic here exactly as it was)
   function generateEstimate(images, transcript) {
-    // Simple heuristic-based sample estimator
-    const baseLabor = 75; // per hour
+    const baseLabor = 75; 
     const imageFactor = Math.min(4, Math.max(1, images.length));
     let tasks = [];
     let materials = [];
@@ -48,7 +52,6 @@ export default function App() {
     const markup = Math.round(subtotal * 0.12 * 100) / 100;
     const total = Math.round((subtotal + markup) * 100) / 100;
 
-    // Generate supplier links (search URLs)
     const materialsWithLinks = materials.map((m) => ({
       ...m,
       link: `https://www.homedepot.com/s/${encodeURIComponent(m.name)}`,
@@ -63,28 +66,55 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>Toolbelt AI</h1>
-        <p className="sub">Instant Job Estimator & Materials Requisition</p>
+    <div className="app-container">
+      <header>
+        <div className="badge">⚡ AI-Powered Estimation</div>
+        <h1 className="brand-title">
+          Toolbelt <span className="highlight-ai">AI</span>
+        </h1>
+        <p className="subtitle">
+          Your partner for <span>instant quotes</span> and <span className="blue">smart materials sourcing</span>.
+        </p>
       </header>
 
-      <main className="panel">
-        <CameraCapture images={images} setImages={setImages} />
-        <VoiceRecorder transcript={transcript} setTranscript={setTranscript} />
+      <main>
+        {/* Split Card Layout */}
+        <div className="input-grid">
+          
+          {/* Left Card: Photos */}
+          <div className="glass-card">
+            <div className="card-header">
+              <div className="icon-box orange">📷</div>
+              <div>
+                <h2 className="card-title">Job Site Photos</h2>
+                <p className="card-desc">Upload images of the work area</p>
+              </div>
+            </div>
+            <CameraCapture images={images} setImages={setImages} />
+          </div>
 
-        <div className="actions">
-          <button className="primary" onClick={handleEstimate} disabled={loading}>
-            {loading ? "Estimating…" : "Estimate Now"}
+          {/* Right Card: Voice */}
+          <div className="glass-card">
+             <div className="card-header">
+              <div className="icon-box cyan">jq</div>
+              <div>
+                <h2 className="card-title">Voice Description</h2>
+                <p className="card-desc">Describe the job details</p>
+              </div>
+            </div>
+            <VoiceRecorder transcript={transcript} setTranscript={setTranscript} />
+          </div>
+
+        </div>
+
+        <div className="action-area">
+          <button className="cta-btn" onClick={handleEstimate} disabled={loading}>
+            {loading ? "Analyzing Job Site..." : "✨ Generate Quote & Materials"}
           </button>
         </div>
 
-        {estimate && <EstimateCard estimate={estimate} images={images} transcript={transcript} />}
+        {estimate && <EstimateCard estimate={estimate} />}
       </main>
-
-      <footer className="footer">
-        <small>Mobile-first — voice + photo workflow for contractors</small>
-      </footer>
     </div>
   );
 }
