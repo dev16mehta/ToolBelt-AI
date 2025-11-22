@@ -1,187 +1,109 @@
-/* App.jsx */
 import React, { useState } from "react";
-import { Valyu } from "valyu-js"; // Import the library
+import { Valyu } from "valyu-js"; 
 import CameraCapture from "./components/CameraCapture";
 import VoiceRecorder from "./components/VoiceRecorder";
 import EstimateCard from "./components/EstimateCard";
 
-// Initialize the client 
-const valyu = new Valyu("EqsAMTZKpW28845oSgHcm7FkekXKxi6K2qbkIUhu");
+// Initialize Valyu (Replace with your actual API key)
+const valyu = new Valyu("YOUR_VALYU_API_KEY_HERE");
 
 export default function App() {
   const [images, setImages] = useState([]);
   const [transcript, setTranscript] = useState("");
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [conversationContext, setConversationContext] = useState("");
-
-  // Handler for when AI generates an estimate from voice/chat
-  const handleAiEstimate = async (estimateData, features, materialsFromApi, tasksFromApi) => {
-    // Use materials and tasks from API, just add purchase links
-    const materials = await Promise.all((materialsFromApi || []).map(async (m) => {
-      let link = `https://www.google.com/search?q=${encodeURIComponent(m.name)}`;
-      
-      try {
-        const response = await valyu.search(`buy ${m.name} plumbing`, { maxNumResults: 1 });
-        if (response.results && response.results.length > 0) {
-          link = response.results[0].url;
-        }
-      } catch (err) {
-        console.warn(`Valyu search failed for ${m.name}`);
-      }
-      
-      return { ...m, link };
-    }));
-
-    const tasks = tasksFromApi || [];
-
-    // Calculate breakdown based on materials from API
-    const baseLabor = 75; // £75 per hour
-    const laborTotal = tasks.reduce((sum, task) => sum + task.hours * baseLabor, 0);
-    const materialsTotal = materials.reduce((sum, m) => sum + m.qty * m.unitPrice, 0);
-    const subtotal = laborTotal + materialsTotal;
-    const markup = Math.round(subtotal * 0.12 * 100) / 100;
-    const total = Math.round((subtotal + markup) * 100) / 100;
-
-    // Set estimate with both model prediction and detailed breakdown
-    setEstimate({
-      modelPrediction: {
-        cost: estimateData.cost_gbp,
-        time: estimateData.time_days
-      },
-      tasks,
-      materials,
-      breakdown: {
-        laborTotal: Math.round(laborTotal * 100) / 100,
-        materialsTotal: Math.round(materialsTotal * 100) / 100,
-        markup,
-        total
-      },
-      features,
-      note: `AI-generated estimate. Model prediction: £${estimateData.cost_gbp.toFixed(2)} | ${estimateData.time_days} days`
-    });
-  };
 
   async function handleEstimate() {
-    // Check if we have context from conversation or transcript
-    const hasContext = conversationContext || transcript;
-    
-    if (images.length === 0 && !hasContext) {
-      alert("Please upload a photo or describe the job first.");
+    // 1. Validate Input
+    const textToCheck = transcript || "Plumbing repair job based on site photos.";
+    if (textToCheck.length < 5 && images.length === 0) {
+      alert("Please describe the job or upload a photo.");
       return;
     }
+
     setLoading(true);
+    setEstimate(null);
 
     try {
-      // If we have conversation context or transcript, use ML model
-      if (hasContext) {
-        const contextToUse = conversationContext || transcript;
-        const response = await fetch('http://localhost:8000/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: contextToUse })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.estimate && data.features) {
-            await handleAiEstimate(data.estimate, data.features, data.materials, data.tasks);
-          }
-        }
-      } else {
-        // Fall back to image-based estimation
-        const result = await generateEstimate(images, transcript);
-        setEstimate(result);
+      console.log("Sending request to backend...");
+
+      // 2. Call the Backend
+      const apiResponse = await fetch("http://127.0.0.1:8000/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_description: textToCheck }),
+      });
+
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.detail?.error || "Backend API Error");
       }
+
+      const data = await apiResponse.json();
+      console.log("Backend Success:", data);
+
+      // --- NEW: Adjust Time Logic ---
+      // Divide the returned days by 10 to make it more realistic
+      const adjustedDays = data.time_days / 2;
+      // Calculate hours based on the new adjusted days (assuming 8hr work day)
+      const adjustedHours = Math.ceil(adjustedDays * 8); 
+
+      // 3. Process Features
+      const extractedFeatures = data.features || {};
+      
+      let rawMaterials = Object.entries(extractedFeatures).map(([key, qty]) => {
+        const formattedName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        return { 
+            name: formattedName, 
+            qty: typeof qty === 'number' ? qty : 1, 
+            unitPrice: 0 
+        };
+      });
+
+      if (rawMaterials.length === 0) {
+        rawMaterials.push({ name: "General Plumbing Supplies", qty: 1, unitPrice: 0 });
+      }
+
+      // 4. Find Buy Links with Valyu
+      const materialsWithLinks = await Promise.all(rawMaterials.map(async (m) => {
+        let realUrl = `https://www.google.com/search?q=${encodeURIComponent(m.name)}`;
+        try {
+          const searchRes = await valyu.search(`buy ${m.name} plumbing UK`, { maxNumResults: 1 });
+          if (searchRes.results?.length > 0) realUrl = searchRes.results[0].url;
+        } catch (err) { console.warn(`Valyu search failed for ${m.name}`); }
+        return { ...m, link: realUrl };
+      }));
+
+      const finalEstimate = {
+        tasks: [{ title: "Estimated Labor & Installation", hours: adjustedHours }],
+        materials: materialsWithLinks,
+        breakdown: { 
+          total: data.cost_gbp // Keep cost as is (GBP)
+        },
+        // Update the note to show the adjusted days
+        note: `AI Estimate based on: "${data.job_description}". Time: ${adjustedDays.toFixed(1)} days.`
+      };
+
+      setEstimate(finalEstimate);
+
     } catch (error) {
       console.error("Estimation failed:", error);
-      alert("Something went wrong generating the quote. Check console.");
+      alert(`Error: ${error.message}. Check the console for details.`);
     } finally {
       setLoading(false);
     }
-  }
-
-  // Converted to ASYNC function to handle API calls
-  async function generateEstimate(images, transcript) {
-    const baseLabor = 75;
-    const imageFactor = Math.min(4, Math.max(1, images.length));
-    let tasks = [];
-    let rawMaterials = [];
-
-    const text = transcript.toLowerCase();
-    
-    // 1. Determine logic (Placeholder simulation)
-    if (text.includes("leak") || text.includes("pipe")) {
-      tasks.push({ title: "Diagnose leak", hours: 1 });
-      tasks.push({ title: "Replace pipe section", hours: 2 });
-      rawMaterials.push({ name: "1/2\" PVC pipe", qty: 1, unitPrice: 12 });
-      rawMaterials.push({ name: "PVC Pipe coupler", qty: 1, unitPrice: 4 });
-    } else if (text.includes("landscap") || text.includes("sod") || text.includes("mulch")) {
-      tasks.push({ title: "Site prep", hours: 2 });
-      tasks.push({ title: "Install mulch/sod", hours: 3 * imageFactor });
-      rawMaterials.push({ name: "Bag of Mulch", qty: 12 * imageFactor, unitPrice: 4 });
-      rawMaterials.push({ name: "Sod roll", qty: 50 * imageFactor, unitPrice: 8 });
-    } else {
-      tasks.push({ title: "General repair/inspection", hours: 1 * imageFactor });
-      rawMaterials.push({ name: "Assorted fasteners box", qty: 1, unitPrice: 8 });
-    }
-
-    // 2. Fetch REAL links using Valyu
-    // We use Promise.all to fetch all links in parallel (faster)
-    const materialsWithLinks = await Promise.all(rawMaterials.map(async (m) => {
-      let realUrl = `https://www.google.com/search?q=${encodeURIComponent(m.name)}`; // Fallback
-      
-      try {
-        // Search specifically for buying the item
-        const response = await valyu.search(`buy ${m.name} home depot`, { 
-          maxNumResults: 1 
-        });
-        
-        if (response.results && response.results.length > 0) {
-           realUrl = response.results[0].url;
-        }
-      } catch (err) {
-        console.warn(`Valyu search failed for ${m.name}, using fallback.`, err);
-      }
-
-      return {
-        ...m,
-        link: realUrl
-      };
-    }));
-
-    // 3. Calculate Totals
-    const laborTotal = tasks.reduce((s, t) => s + t.hours * baseLabor, 0);
-    const materialsTotal = materialsWithLinks.reduce((s, m) => s + m.qty * m.unitPrice, 0);
-    const subtotal = Math.round((laborTotal + materialsTotal) * 100) / 100;
-    const markup = Math.round(subtotal * 0.12 * 100) / 100;
-    const total = Math.round((subtotal + markup) * 100) / 100;
-
-    return {
-      tasks,
-      materials: materialsWithLinks,
-      breakdown: { laborTotal, materialsTotal, markup, total },
-      note: "Instant on-site estimate. Prices sourced via Valyu AI."
-    };
   }
 
   return (
     <div className="app-container">
       <header>
         <div className="badge">⚡ AI-Powered Estimation</div>
-        <h1 className="brand-title">
-          Toolbelt <span className="highlight-ai">AI</span>
-        </h1>
-        <p className="subtitle">
-          Your partner for <span>instant quotes</span> and <span className="blue">smart materials sourcing</span>.
-        </p>
+        <h1 className="brand-title">Toolbelt <span className="highlight-ai">AI</span></h1>
+        <p className="subtitle">Your partner for <span>instant quotes</span> and <span className="blue">smart materials sourcing</span>.</p>
       </header>
 
       <main>
-        {/* Split Card Layout */}
         <div className="input-grid">
-          
-          {/* Left Card: Photos */}
           <div className="glass-card">
             <div className="card-header">
               <div className="icon-box orange">📷</div>
@@ -193,28 +115,21 @@ export default function App() {
             <CameraCapture images={images} setImages={setImages} />
           </div>
 
-          {/* Right Card: Voice */}
           <div className="glass-card">
              <div className="card-header">
-              <div className="icon-box cyan">🎤</div>
+              <div className="icon-box cyan">jq</div>
               <div>
                 <h2 className="card-title">Voice Description</h2>
                 <p className="card-desc">Describe the job details</p>
               </div>
             </div>
-            <VoiceRecorder 
-              transcript={transcript} 
-              setTranscript={setTranscript}
-              onEstimateReceived={handleAiEstimate}
-              onContextUpdate={setConversationContext}
-            />
+            <VoiceRecorder transcript={transcript} setTranscript={setTranscript} />
           </div>
-
         </div>
 
         <div className="action-area">
           <button className="cta-btn" onClick={handleEstimate} disabled={loading}>
-            {loading ? "Analyzing & Sourcing..." : "✨ Generate Quote & Materials"}
+            {loading ? "Analyzing..." : "✨ Generate Quote & Materials"}
           </button>
         </div>
 
