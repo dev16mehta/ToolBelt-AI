@@ -250,7 +250,7 @@ export default function VoiceRecorder({ transcript, setTranscript, onEstimateRec
                     💰 Estimate Generated:
                   </div>
                   <div style={{ fontSize: '0.85rem', color: '#e5e7eb' }}>
-                    <div>Cost: £{message.estimate.cost_gbp} (DZD {message.estimate.cost_dzd})</div>
+                    <div>Cost: £{message.estimate.cost_gbp}</div>
                     <div>Time: {message.estimate.time_days} days</div>
                   </div>
                 </div>

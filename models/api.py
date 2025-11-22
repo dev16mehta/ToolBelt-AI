@@ -216,6 +216,7 @@ async def estimate_job(request: EstimateRequest):
         return EstimateResponse(
             success=True,
             job_description=request.job_description,
+            cost_dzd=round(cost_dzd, 2),
             cost_gbp=round(cost_gbp, 2),
             time_days=round(time_days / 15, 0),
             features=features,
@@ -343,7 +344,7 @@ async def chat(request: ChatRequest):
                 response_text = (
                     f"I understand you need help with: {request.message}\n\n"
                     f"Based on my analysis, here's what I estimate:\n"
-                    f"💰 Cost: £{estimate['cost_gbp']:.2f} (DZD {estimate['cost_dzd']:.2f})\n"
+                    f"💰 Cost: £{estimate['cost_gbp']:.2f}\n"
                     f"⏱️ Time: {estimate['time_days']} days\n\n"
                     f"This estimate is based on the specific details you provided. "
                     f"Would you like me to explain any part of this estimate or do you have additional questions?"
