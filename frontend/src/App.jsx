@@ -13,19 +13,86 @@ export default function App() {
   const [transcript, setTranscript] = useState("");
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [conversationContext, setConversationContext] = useState("");
+
+  // Handler for when AI generates an estimate from voice/chat
+  const handleAiEstimate = async (estimateData, features, materialsFromApi, tasksFromApi) => {
+    // Use materials and tasks from API, just add purchase links
+    const materials = await Promise.all((materialsFromApi || []).map(async (m) => {
+      let link = `https://www.google.com/search?q=${encodeURIComponent(m.name)}`;
+      
+      try {
+        const response = await valyu.search(`buy ${m.name} plumbing`, { maxNumResults: 1 });
+        if (response.results && response.results.length > 0) {
+          link = response.results[0].url;
+        }
+      } catch (err) {
+        console.warn(`Valyu search failed for ${m.name}`);
+      }
+      
+      return { ...m, link };
+    }));
+
+    const tasks = tasksFromApi || [];
+
+    // Calculate breakdown based on materials from API
+    const baseLabor = 75; // £75 per hour
+    const laborTotal = tasks.reduce((sum, task) => sum + task.hours * baseLabor, 0);
+    const materialsTotal = materials.reduce((sum, m) => sum + m.qty * m.unitPrice, 0);
+    const subtotal = laborTotal + materialsTotal;
+    const markup = Math.round(subtotal * 0.12 * 100) / 100;
+    const total = Math.round((subtotal + markup) * 100) / 100;
+
+    // Set estimate with both model prediction and detailed breakdown
+    setEstimate({
+      modelPrediction: {
+        cost: estimateData.cost_gbp,
+        time: estimateData.time_days
+      },
+      tasks,
+      materials,
+      breakdown: {
+        laborTotal: Math.round(laborTotal * 100) / 100,
+        materialsTotal: Math.round(materialsTotal * 100) / 100,
+        markup,
+        total
+      },
+      features,
+      note: `AI-generated estimate. Model prediction: £${estimateData.cost_gbp.toFixed(2)} | ${estimateData.time_days} days`
+    });
+  };
 
   async function handleEstimate() {
-    if (images.length === 0 && !transcript) {
+    // Check if we have context from conversation or transcript
+    const hasContext = conversationContext || transcript;
+    
+    if (images.length === 0 && !hasContext) {
       alert("Please upload a photo or describe the job first.");
       return;
     }
     setLoading(true);
-    setEstimate(null); // Clear previous estimate while loading
 
     try {
-      // Now we await the AI generation because it fetches real links
-      const result = await generateEstimate(images, transcript);
-      setEstimate(result);
+      // If we have conversation context or transcript, use ML model
+      if (hasContext) {
+        const contextToUse = conversationContext || transcript;
+        const response = await fetch('http://localhost:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: contextToUse })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.estimate && data.features) {
+            await handleAiEstimate(data.estimate, data.features, data.materials, data.tasks);
+          }
+        }
+      } else {
+        // Fall back to image-based estimation
+        const result = await generateEstimate(images, transcript);
+        setEstimate(result);
+      }
     } catch (error) {
       console.error("Estimation failed:", error);
       alert("Something went wrong generating the quote. Check console.");
@@ -129,13 +196,18 @@ export default function App() {
           {/* Right Card: Voice */}
           <div className="glass-card">
              <div className="card-header">
-              <div className="icon-box cyan">jq</div>
+              <div className="icon-box cyan">🎤</div>
               <div>
                 <h2 className="card-title">Voice Description</h2>
                 <p className="card-desc">Describe the job details</p>
               </div>
             </div>
-            <VoiceRecorder transcript={transcript} setTranscript={setTranscript} />
+            <VoiceRecorder 
+              transcript={transcript} 
+              setTranscript={setTranscript}
+              onEstimateReceived={handleAiEstimate}
+              onContextUpdate={setConversationContext}
+            />
           </div>
 
         </div>

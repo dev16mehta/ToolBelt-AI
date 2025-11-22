@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export default function VoiceRecorder({ transcript, setTranscript }) {
+export default function VoiceRecorder({ transcript, setTranscript, onEstimateReceived, onContextUpdate }) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(true);
   const [conversationLog, setConversationLog] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [conversationContext, setConversationContext] = useState("");
   const messagesEndRef = useRef(null);
+
+  const resetConversation = () => {
+    setConversationLog([]);
+    setConversationContext("");
+    setTranscript("");
+    if (onContextUpdate) onContextUpdate("");
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,6 +53,14 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
   const sendMessage = async (messageText, fromVoice = false) => {
     if (!messageText.trim()) return;
 
+    // Build conversation context from previous messages
+    const contextMessages = conversationLog
+      .filter(msg => msg.sender === 'user')
+      .map(msg => msg.text)
+      .join('. ');
+    
+    const fullContext = contextMessages ? `${contextMessages}. ${messageText}` : messageText;
+
     const userMessage = {
       id: Date.now(),
       text: messageText,
@@ -65,7 +81,7 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
       const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageText })
+        body: JSON.stringify({ message: fullContext })
       });
       const data = await response.json();
       
@@ -74,9 +90,21 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
         text: data.response,
         sender: "assistant",
         timestamp: new Date(),
+        estimate: data.estimate,
+        features: data.features
       };
 
       setConversationLog(prev => [...prev, aiMessage]);
+      
+      // Update conversation context
+      const newContext = fullContext;
+      setConversationContext(newContext);
+      if (onContextUpdate) onContextUpdate(newContext);
+      
+      // If an estimate was generated, notify the parent component
+      if (data.estimate && onEstimateReceived) {
+        onEstimateReceived(data.estimate, data.features, data.materials, data.tasks);
+      }
       
       // Speak the response if it was a voice interaction
       if (fromVoice && window.speechSynthesis) {
@@ -151,9 +179,27 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
             color: 'var(--text-muted)',
             fontWeight: 600,
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            paddingBottom: '8px'
+            paddingBottom: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            Conversation:
+            <span>Conversation:</span>
+            <button
+              onClick={resetConversation}
+              style={{
+                padding: '4px 10px',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '4px',
+                color: '#ef4444',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                fontWeight: 600
+              }}
+            >
+              🔄 New Estimate
+            </button>
           </div>
           {conversationLog.map((message) => (
             <div 
@@ -187,6 +233,28 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
               <div style={{ color: '#e5e7eb', lineHeight: '1.5', fontSize: '0.9rem' }}>
                 {message.text}
               </div>
+              {message.estimate && (
+                <div style={{ 
+                  marginTop: '10px',
+                  padding: '10px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(34, 197, 94, 0.3)'
+                }}>
+                  <div style={{ 
+                    fontWeight: 'bold', 
+                    color: '#22c55e',
+                    marginBottom: '6px',
+                    fontSize: '0.85rem'
+                  }}>
+                    💰 Estimate Generated:
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#e5e7eb' }}>
+                    <div>Cost: £{message.estimate.cost_gbp}</div>
+                    <div>Time: {message.estimate.time_days} days</div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {processing && (

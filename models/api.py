@@ -126,6 +126,25 @@ class ErrorResponse(BaseModel):
     detail: Optional[str] = Field(None, description="Detailed error information")
 
 
+class ChatRequest(BaseModel):
+    """Request model for chat endpoint."""
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="User message describing the plumbing job"
+    )
+
+
+class ChatResponse(BaseModel):
+    """Response model for chat endpoint."""
+    response: str = Field(description="AI response text")
+    estimate: Optional[dict] = Field(None, description="Cost and time estimate if job was described")
+    features: Optional[dict] = Field(None, description="Extracted features if applicable")
+    materials: Optional[list] = Field(None, description="Suggested materials list with names and quantities")
+    tasks: Optional[list] = Field(None, description="Labor tasks with estimated hours")
+
+
 # API Endpoints
 @app.get("/")
 async def root():
@@ -197,6 +216,7 @@ async def estimate_job(request: EstimateRequest):
         return EstimateResponse(
             success=True,
             job_description=request.job_description,
+            cost_dzd=round(cost_dzd, 2),
             cost_gbp=round(cost_gbp, 2),
             time_days=round(time_days / 15, 0),
             features=features,
@@ -216,6 +236,177 @@ async def estimate_job(request: EstimateRequest):
         raise HTTPException(
             status_code=500,
             detail={"success": False, "error": "Estimation failed", "detail": str(e)},
+        )
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """
+    Chat endpoint that handles conversational interactions and generates estimates.
+    
+    This endpoint:
+    1. Accepts a natural language message
+    2. Attempts to extract job features if the message describes work
+    3. Returns a conversational response with optional estimate
+    
+    Args:
+        request: ChatRequest containing user message
+        
+    Returns:
+        ChatResponse with conversational response and optional estimate
+    """
+    try:
+        message = request.message.lower()
+        
+        # Check if message seems to describe a job
+        job_keywords = ['fix', 'repair', 'install', 'replace', 'leak', 'pipe', 'drain', 
+                       'toilet', 'sink', 'shower', 'bath', 'faucet', 'water', 'plumbing']
+        
+        is_job_description = any(keyword in message for keyword in job_keywords)
+        
+        if is_job_description:
+            try:
+                # Get services
+                extractor = Services.get_extractor()
+                predictor = Services.get_predictor()
+                
+                # Extract features from message
+                features = extractor.extract_features(request.message)
+                
+                # Make prediction
+                prediction = predictor.predict(features)
+                
+                # Convert currency
+                cost_dzd = prediction['cost']
+                cost_gbp = dzd_to_gbp(cost_dzd)
+                time_days = prediction['time']
+                
+                estimate = {
+                    'cost_dzd': round(cost_dzd, 2),
+                    'cost_gbp': round(cost_gbp, 2),
+                    'time_days': round(time_days, 1),
+                }
+                
+                # Generate materials and tasks from features
+                materials = []
+                tasks = []
+                
+                # Map features to materials
+                if features.get('toilet', 0) > 0:
+                    toilet_type = features.get('toileType', 'One-Piece')
+                    materials.append({'name': f"{toilet_type} Toilet", 'qty': features['toilet'], 'unitPrice': 350 if toilet_type == 'Wall-Hung' else 250 if toilet_type == 'One-Piece' else 150})
+                    tasks.append({'title': f"Install {toilet_type} Toilet", 'hours': features['toilet'] * 3})
+                
+                if features.get('washbasin', 0) > 0:
+                    basin_type = features.get('washbasinType', 'Standard')
+                    materials.append({'name': f"{basin_type} Washbasin", 'qty': features['washbasin'], 'unitPrice': 180 if 'Luxury' in basin_type else 120})
+                    tasks.append({'title': 'Install Washbasin', 'hours': features['washbasin'] * 2})
+                
+                if features.get('showerCabin', 0) > 0:
+                    shower_type = features.get('showerCabinType', 'Standard')
+                    materials.append({'name': f"{shower_type} Shower Cabin", 'qty': features['showerCabin'], 'unitPrice': 800 if 'Luxury' in shower_type else 450})
+                    tasks.append({'title': 'Install Shower Cabin', 'hours': features['showerCabin'] * 5})
+                
+                if features.get('bathhub', 0) > 0:
+                    bath_type = features.get('bathhubType', 'Standard')
+                    materials.append({'name': f"{bath_type} Bathtub", 'qty': features['bathhub'], 'unitPrice': 1200 if 'Luxury' in bath_type else 600})
+                    tasks.append({'title': 'Install Bathtub', 'hours': features['bathhub'] * 6})
+                
+                if features.get('Bidet', 0) > 0:
+                    bidet_type = features.get('BidetType', 'Standard')
+                    materials.append({'name': f"{bidet_type} Bidet", 'qty': features['Bidet'], 'unitPrice': 200})
+                    tasks.append({'title': 'Install Bidet', 'hours': features['Bidet'] * 2})
+                
+                if features.get('radiator', 0) > 0:
+                    rad_type = features.get('radiatorType', 'Standard Radiator')
+                    materials.append({'name': rad_type, 'qty': features['radiator'], 'unitPrice': 150})
+                    tasks.append({'title': 'Install Radiators', 'hours': features['radiator'] * 1.5})
+                
+                if features.get('waterHeater', 0) > 0:
+                    heater_type = features.get('waterHeaterType', 'Standard')
+                    materials.append({'name': f"{heater_type} Water Heater", 'qty': features['waterHeater'], 'unitPrice': 400})
+                    tasks.append({'title': 'Install Water Heater', 'hours': features['waterHeater'] * 4})
+                
+                if features.get('boilerSize') and features['boilerSize'] not in ['none', '0', 0]:
+                    size = features['boilerSize']
+                    price = 1500 if size == 'big' else 1000 if size == 'medium' else 600
+                    materials.append({'name': f"{size.capitalize()} Boiler", 'qty': 1, 'unitPrice': price})
+                    tasks.append({'title': 'Install Boiler', 'hours': 8})
+                
+                # Add common materials if we have any fixtures
+                if materials:
+                    materials.extend([
+                        {'name': 'PVC Pipes & Fittings', 'qty': 1, 'unitPrice': 150},
+                        {'name': 'Plumbing Hardware Kit', 'qty': 1, 'unitPrice': 80},
+                        {'name': 'Sealants & Adhesives', 'qty': 1, 'unitPrice': 40}
+                    ])
+                
+                response_text = (
+                    f"I understand you need help with: {request.message}\n\n"
+                    f"Based on my analysis, here's what I estimate:\n"
+                    f"💰 Cost: £{estimate['cost_gbp']:.2f}\n"
+                    f"⏱️ Time: {estimate['time_days']} days\n\n"
+                    f"This estimate is based on the specific details you provided. "
+                    f"Would you like me to explain any part of this estimate or do you have additional questions?"
+                )
+                
+                return ChatResponse(
+                    response=response_text,
+                    estimate=estimate,
+                    features=features,
+                    materials=materials,
+                    tasks=tasks
+                )
+                
+            except Exception as e:
+                # If estimation fails, still provide a helpful response
+                return ChatResponse(
+                    response=(
+                        f"I understand you're describing a plumbing job, but I need a bit more detail to provide "
+                        f"an accurate estimate. Could you tell me more about:\n"
+                        f"- The specific fixtures involved (toilet, sink, shower, etc.)\n"
+                        f"- The type/quality level you're looking for (standard, luxury, etc.)\n"
+                        f"- Any other relevant details about the work?"
+                    ),
+                    estimate=None,
+                    features=None
+                )
+        else:
+            # General conversation response
+            if any(word in message for word in ['hello', 'hi', 'hey']):
+                response_text = (
+                    "Hello! I'm your AI plumbing assistant. I can help you estimate costs and time "
+                    "for plumbing jobs. Just describe what you need done!"
+                )
+            elif any(word in message for word in ['help', 'what can you do']):
+                response_text = (
+                    "I can help you with plumbing job estimates! Just describe your plumbing needs:\n"
+                    "- Repairs (leaks, clogs, etc.)\n"
+                    "- Installations (toilets, sinks, showers, etc.)\n"
+                    "- Replacements or upgrades\n\n"
+                    "I'll analyze your description and provide cost and time estimates!"
+                )
+            elif any(word in message for word in ['thank', 'thanks']):
+                response_text = "You're welcome! Let me know if you need help with anything else!"
+            else:
+                response_text = (
+                    "I'm here to help with plumbing estimates! Could you describe the plumbing work "
+                    "you need done? Include details like fixtures, repairs, or installations you're considering."
+                )
+            
+            return ChatResponse(
+                response=response_text,
+                estimate=None,
+                features=None
+            )
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Chat processing failed",
+                "detail": str(e)
+            }
         )
 
 
