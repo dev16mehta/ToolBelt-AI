@@ -1,0 +1,15 @@
+# Core ML and Data Science Libraries
+pandas>=1.5.0
+numpy>=1.23.0
+scikit-learn>=1.2.0
+xgboost>=1.7.0
+joblib>=1.2.0
+
+# OpenAI Integration for Feature Extraction
+openai>=1.0.0
+python-dotenv>=1.0.0
+
+# Optional: Web API Framework (uncomment if building REST API)
+# fastapi>=0.104.0
+# uvicorn[standard]>=0.24.0
+# pydantic>=2.0.0

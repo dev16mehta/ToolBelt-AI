@@ -1,0 +1,125 @@
+{
+  "model_info": {
+    "version": "1.0.0",
+    "created_date": "2025-11-22T13:53:03.817110",
+    "model_type": "plumbing_cost_time_predictor",
+    "description": "Regression models for predicting plumbing service cost and time"
+  },
+  "preprocessing": {
+    "ordinal_mappings": {
+      "boilerSize": {
+        "small": 0,
+        "medium": 1,
+        "big": 2
+      },
+      "sinkTypeQuality": {
+        "poor": 0,
+        "high": 1
+      }
+    },
+    "categorical_columns": [
+      "boilerSize",
+      "radiatorType",
+      "toileType",
+      "washbasinType",
+      "bathhubType",
+      "showerCabinType",
+      "BidetType",
+      "waterHeaterType",
+      "sinkTypeQuality",
+      "sinkCategorie"
+    ],
+    "numerical_columns": [
+      "radiator",
+      "toilet",
+      "washbasin",
+      "bathhub",
+      "showerCabin",
+      "Bidet",
+      "waterHeater"
+    ],
+    "one_hot_encoded_columns": [
+      "radiatorType",
+      "toileType",
+      "washbasinType",
+      "bathhubType",
+      "showerCabinType",
+      "BidetType",
+      "waterHeaterType",
+      "sinkCategorie"
+    ],
+    "feature_names": [
+      "boilerSize",
+      "radiator",
+      "toilet",
+      "washbasin",
+      "bathhub",
+      "showerCabin",
+      "Bidet",
+      "waterHeater",
+      "sinkTypeQuality",
+      "radiatorType_FONDITAL_ARDENTE_C2",
+      "radiatorType_GLOBAL_ISEO_350",
+      "radiatorType_Helyos_Evo",
+      "radiatorType_Primavera_H500",
+      "radiatorType_Samochauf_SAHD",
+      "radiatorType_Sira_Alice_Royal",
+      "toileType_One-Piece",
+      "toileType_Wall-Hung",
+      "washbasinType_Pedestal",
+      "washbasinType_Wall-Mounted",
+      "bathhubType_Standard",
+      "showerCabinType_Luxury_Enclosure",
+      "BidetType_Bidet-Mixer-Tap",
+      "BidetType_Wall-Hung",
+      "waterHeaterType_Electric-50liters",
+      "waterHeaterType_GAS-11liters",
+      "waterHeaterType_GAS-6liters",
+      "sinkCategorie_single"
+    ],
+    "total_features_after_encoding": 27
+  },
+  "transformations": {
+    "cost_target": "log1p (np.log1p)",
+    "time_target": "none",
+    "feature_scaling": "StandardScaler (for Ridge time model only)"
+  },
+  "models": {
+    "cost_predictor": {
+      "algorithm": "XGBoost",
+      "model_class": "XGBRegressor",
+      "hyperparameters": {
+        "n_estimators": 100,
+        "max_depth": 8,
+        "learning_rate": 0.1
+      },
+      "performance": {
+        "r2_score": 0.976702568091319,
+        "rmse": 52653.13829994455,
+        "mae": 40628.39680989586,
+        "cv_mean": 0.9405244024100462,
+        "cv_std": 0.009545737493518242
+      }
+    },
+    "time_predictor": {
+      "algorithm": "Ridge",
+      "model_class": "Ridge",
+      "uses_scaler": true,
+      "hyperparameters": {
+        "alpha": 1.0
+      },
+      "performance": {
+        "r2_score": 0.8561094170853966,
+        "rmse": 6.000678156625889,
+        "mae": 4.988720184548283,
+        "cv_mean": 0.8684233000162405,
+        "cv_std": 0.006965211916019315
+      }
+    }
+  },
+  "training_config": {
+    "random_state": 42,
+    "test_size": 0.2,
+    "cv_folds": 5
+  }
+}
