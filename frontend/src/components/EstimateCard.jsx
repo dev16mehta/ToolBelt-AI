@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function EstimateCard({ estimate = {} }) {
-  const { tasks = [], materials = [], breakdown = {}, note = "", modelPrediction, features } = estimate;
+  const { tasks = [], materials = [], breakdown = {}, note = "" } = estimate;
 
   return (
     <div className="estimate-container">
@@ -11,77 +11,9 @@ export default function EstimateCard({ estimate = {} }) {
       </div>
 
       <div className="est-body">
-        {note && (
-          <p style={{ color: '#94a3b8', marginBottom: '20px', fontSize: '0.95rem' }}>
-            {note}
-          </p>
-        )}
-
-        {/* Model Prediction Highlight */}
-        {modelPrediction && (
-          <div style={{
-            marginBottom: '25px',
-            padding: '15px',
-            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.05))',
-            borderRadius: '10px',
-            border: '1px solid rgba(34, 197, 94, 0.3)'
-          }}>
-            <div style={{ 
-              fontSize: '0.85rem', 
-              fontWeight: 'bold',
-              color: '#22c55e',
-              marginBottom: '10px'
-            }}>
-              🤖 ML Model Prediction:
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              gap: '20px',
-              fontSize: '0.9rem',
-              color: '#e5e7eb'
-            }}>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Cost: </span>
-                <strong style={{ color: '#22c55e' }}>£{modelPrediction.cost.toFixed(2)}</strong>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Time: </span>
-                <strong style={{ color: '#22c55e' }}>{modelPrediction.time} days</strong>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Detected Features */}
-        {features && Object.keys(features).length > 0 && (
-          <div style={{ marginBottom: '25px' }}>
-            <span className="section-title">Detected Features</span>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-              marginTop: '10px'
-            }}>
-              {Object.entries(features).map(([key, value]) => {
-                // Only show non-zero and meaningful values
-                if (value === 0 || value === '0' || value === 'none' || value === '') return null;
-                
-                return (
-                  <span key={key} style={{
-                    padding: '6px 12px',
-                    backgroundColor: 'rgba(96, 165, 250, 0.15)',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    color: '#60a5fa',
-                    border: '1px solid rgba(96, 165, 250, 0.3)'
-                  }}>
-                    {key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'boolean' ? (value ? '✓' : '✗') : value}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <p style={{ color: '#94a3b8', marginBottom: '30px', fontSize: '0.95rem' }}>
+          {note}
+        </p>
 
         {/* LABOR SECTION */}
         <span className="section-title">Labor Breakdown</span>
@@ -96,28 +28,26 @@ export default function EstimateCard({ estimate = {} }) {
         <span className="section-title" style={{marginTop: '30px'}}>Materials Required</span>
         {materials.map((m, i) => (
           <div className="item-row" key={i}>
-            <div>
-              <div className="item-name">
-                {m.name} <span className="item-sub">x{m.qty}</span>
-              </div>
-              <div>
-                <a href={m.link} target="_blank" rel="noreferrer" className="buy-link">Buy Now ↗</a>
+            <div style={{width: '100%'}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                <div className="item-name">
+                  {m.name} <span className="item-sub">x{m.qty}</span>
+                </div>
+                {/* Price removed, only the link remains */}
+                <a href={m.link} target="_blank" rel="noreferrer" className="buy-link">
+                  Select Item & Buy ↗
+                </a>
               </div>
             </div>
-            <span className="item-price">${(m.qty * m.unitPrice).toFixed(2)}</span>
           </div>
         ))}
 
-        {/* TOTALS SECTION */}
+        {/* TOTALS SECTION (UPDATED TO GBP) */}
         <div className="total-section">
-          <div style={{display:'flex', justifyContent:'flex-end', gap: '20px', marginBottom: '10px', color: '#94a3b8', fontSize: '0.9rem'}}>
-             <span>Labor: ${breakdown.laborTotal}</span>
-             <span>Materials: ${breakdown.materialsTotal}</span>
-             <span>Markup: ${breakdown.markup}</span>
-          </div>
-          <div>
+          <div style={{textAlign: 'right'}}>
             <span className="total-label">ESTIMATED TOTAL</span>
-            <span className="total-price">${breakdown.total}</span>
+            {/* Changed $ to £ */}
+            <span className="total-price">£{breakdown.total}</span>
           </div>
         </div>
         
