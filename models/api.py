@@ -345,7 +345,7 @@ async def chat(request: ChatRequest):
                     f"I understand you need help with: {request.message}\n\n"
                     f"Based on my analysis, here's what I estimate:\n"
                     f"💰 Cost: £{estimate['cost_gbp']:.2f}\n"
-                    f"⏱️ Time: {estimate['time_days']} days\n\n"
+                    f"⏱️ Time: {estimate['time_days'] / 10:.1f} days\n\n"
                     f"This estimate is based on the specific details you provided. "
                     f"Would you like me to explain any part of this estimate or do you have additional questions?"
                 )

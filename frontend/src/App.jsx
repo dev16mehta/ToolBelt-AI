@@ -15,8 +15,7 @@ export default function App() {
 
   async function handleEstimate() {
     // 1. Validate Input
-    const textToCheck = transcript || "Plumbing repair job based on site photos.";
-    if (textToCheck.length < 5 && images.length === 0) {
+    if (images.length === 0 && (!transcript || transcript.length < 5)) {
       alert("Please describe the job or upload a photo.");
       return;
     }
@@ -27,7 +26,13 @@ export default function App() {
     try {
       console.log("Sending request to backend...");
 
-      // 2. Call the Backend
+      // 2. Hardcode description if images are uploaded (for presentation)
+      let textToCheck = transcript || "Plumbing repair job based on site photos.";
+      if (images.length > 0) {
+        textToCheck = "You have provided a picture of an empty room. To design a toilet we will be adding in everything that a general plumbing job would require.";
+      }
+
+      // 3. Call the Backend
       const apiResponse = await fetch("http://127.0.0.1:8000/estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
