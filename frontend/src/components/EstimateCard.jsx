@@ -1,56 +1,67 @@
 import React from "react";
 
-export default function EstimateCard({ estimate = {}, images = [], transcript = "" }) {
+export default function EstimateCard({ estimate = {} }) {
   const { tasks = [], materials = [], breakdown = {}, note = "" } = estimate;
-  return (
-    <section className="card result">
-      <h2>Instant Estimate</h2>
-      <p className="small">{note}</p>
 
-      <div className="row">
-        <div>
-          <h3>Tasks</h3>
-          <ul>
-            {tasks.map((t, i) => (
-              <li key={i}>{t.title} — {t.hours} hr</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3>Photos</h3>
-          <div className="mini-thumbs">
-            {images.slice(0,4).map((img, i) => <img key={i} src={img.url} alt={`p${i}`} />)}
+  return (
+    <div className="estimate-container">
+      <div className="est-header">
+        <span className="est-title">⚡ Instant Estimate</span>
+        <span className="est-badge">AI GENERATED</span>
+      </div>
+
+      <div className="est-body">
+        <p style={{ color: '#94a3b8', marginBottom: '30px', fontSize: '0.95rem' }}>
+          {note}
+        </p>
+
+        {/* LABOR SECTION */}
+        <span className="section-title">Labor Breakdown</span>
+        {tasks.map((t, i) => (
+          <div className="item-row" key={i}>
+            <span className="item-name">{t.title}</span>
+            <span className="item-price">{t.hours} hrs</span>
+          </div>
+        ))}
+
+        {/* MATERIALS SECTION */}
+        <span className="section-title" style={{marginTop: '30px'}}>Materials Required</span>
+        {materials.map((m, i) => (
+          <div className="item-row" key={i}>
+            <div>
+              <div className="item-name">
+                {m.name} <span className="item-sub">x{m.qty}</span>
+              </div>
+              <div>
+                <a href={m.link} target="_blank" rel="noreferrer" className="buy-link">Buy Now ↗</a>
+              </div>
+            </div>
+            <span className="item-price">${(m.qty * m.unitPrice).toFixed(2)}</span>
+          </div>
+        ))}
+
+        {/* TOTALS SECTION */}
+        <div className="total-section">
+          <div style={{display:'flex', justifyContent:'flex-end', gap: '20px', marginBottom: '10px', color: '#94a3b8', fontSize: '0.9rem'}}>
+             <span>Labor: ${breakdown.laborTotal}</span>
+             <span>Materials: ${breakdown.materialsTotal}</span>
+             <span>Markup: ${breakdown.markup}</span>
+          </div>
+          <div>
+            <span className="total-label">ESTIMATED TOTAL</span>
+            <span className="total-price">${breakdown.total}</span>
           </div>
         </div>
+        
+        <div style={{marginTop: '30px', textAlign: 'center'}}>
+          <a 
+            href={`mailto:?subject=Estimate&body=${encodeURIComponent(JSON.stringify(breakdown))}`}
+            style={{color: 'var(--orange)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600}}
+          >
+            📩 Email this Quote
+          </a>
+        </div>
       </div>
-
-      <h3>Materials</h3>
-      <ul className="materials">
-        {materials.map((m, i) => (
-          <li key={i}>
-            <div>
-              <strong>{m.name}</strong> ×{m.qty} — ${Math.round(m.qty * m.unitPrice * 100)/100}
-            </div>
-            <div className="links">
-              <a href={m.link} target="_blank" rel="noreferrer">Buy</a>
-              <a href={`https://www.google.com/search?q=${encodeURIComponent(m.name)}`} target="_blank" rel="noreferrer">Compare</a>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="totals">
-        <div>Materials: ${Math.round((breakdown.materialsTotal || 0)*100)/100}</div>
-        <div>Labor: ${Math.round((breakdown.laborTotal || 0)*100)/100}</div>
-        <div>Markup: ${breakdown.markup}</div>
-        <div className="grand">Total: ${breakdown.total}</div>
-      </div>
-
-      <div className="actions">
-        <a className="primary" href={`mailto:office@you.com?subject=Materials%20Request&body=${encodeURIComponent(JSON.stringify({materials, transcript}, null, 2))}`}>
-          Request Materials
-        </a>
-      </div>
-    </section>
+    </div>
   );
 }

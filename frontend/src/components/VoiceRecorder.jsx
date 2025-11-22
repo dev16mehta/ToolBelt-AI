@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 export default function VoiceRecorder({ transcript, setTranscript }) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(true);
-  let recognition = null;
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -11,7 +10,7 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
       setSupported(false);
       return;
     }
-    recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
     recognition.interimResults = true;
     recognition.continuous = false;
@@ -22,9 +21,7 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
     };
     recognition.onend = () => setListening(false);
 
-    // store to window to use in handlers
     window._toolbelt_recognition = recognition;
-    // cleanup
     return () => {
       if (window._toolbelt_recognition) {
         window._toolbelt_recognition.onresult = null;
@@ -46,25 +43,28 @@ export default function VoiceRecorder({ transcript, setTranscript }) {
   }
 
   return (
-    <section className="card">
-      <h2>Describe the job</h2>
-      {!supported ? (
-        <p className="hint">Voice not supported — enter a short description below.</p>
-      ) : (
-        <p className="hint">Tap record and speak: e.g., "Leaking sink, pipe behind cabinet, small puddle on floor."</p>
-      )}
-
-      <div className="voice-row">
-        <button className={`mic ${listening ? "on" : ""}`} onClick={toggleListen} disabled={!supported}>
-          {listening ? "● Recording" : "● Record"}
-        </button>
-        <textarea
-          className="desc"
-          placeholder="Or type a short description..."
-          value={transcript}
-          onChange={(e) => setTranscript(e.target.value)}
-        />
+    <div className="mic-wrapper">
+      <button 
+        className={`mic-btn ${listening ? "recording" : ""}`} 
+        onClick={toggleListen}
+        disabled={!supported}
+      >
+        {listening ? "II" : "🎙️"}
+      </button>
+      
+      <div style={{marginBottom: '15px', textAlign: 'center'}}>
+         <span style={{fontSize: '0.9rem', color: listening ? '#ef4444' : 'var(--text-muted)', fontWeight: 600}}>
+            {listening ? "Listening..." : "Tap to Describe Job"}
+         </span>
       </div>
-    </section>
+
+      <textarea
+        className="glass-input"
+        rows={3}
+        placeholder="Or type details here (e.g., 'Leaking pipe under kitchen sink...')"
+        value={transcript}
+        onChange={(e) => setTranscript(e.target.value)}
+      />
+    </div>
   );
 }

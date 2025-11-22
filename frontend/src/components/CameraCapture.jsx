@@ -1,39 +1,50 @@
 import React from "react";
 
 export default function CameraCapture({ images, setImages }) {
+  
   function handleFiles(e) {
     const files = Array.from(e.target.files || []);
-    const urls = files.map((f) => ({ file: f, url: URL.createObjectURL(f) }));
+    if (files.length === 0) return;
+    
+    const urls = files.map((f) => ({ 
+      file: f, 
+      url: URL.createObjectURL(f) 
+    }));
     setImages((prev) => [...prev, ...urls]);
   }
 
   function removeImage(idx) {
-    setImages((prev) => {
-      const copy = [...prev];
-      copy.splice(idx, 1);
-      return copy;
-    });
+    setImages((prev) => prev.filter((_, i) => i !== idx));
   }
 
   return (
-    <section className="card">
-      <h2>Photos</h2>
-      <p className="hint">Take a few photos of the job area. Use the camera button for mobile.</p>
-      <div className="controls">
-        <label className="camera-btn">
-          📷 Take Photo
-          <input accept="image/*" capture="environment" type="file" onChange={handleFiles} multiple />
-        </label>
-      </div>
+    <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+      {/* Hidden Input wrapped in Styled Label */}
+      <label className="dropzone-area">
+        <input 
+          type="file" 
+          accept="image/*" 
+          capture="environment" 
+          onChange={handleFiles} 
+          multiple 
+          style={{ display: "none" }} 
+        />
+        <div className="dropzone-icon">📸</div>
+        <span className="dropzone-text">Click to Snap or Upload</span>
+        <span className="dropzone-sub">Supports JPG, PNG (Max 10MB)</span>
+      </label>
 
-      <div className="thumbs">
-        {images.map((img, i) => (
-          <div className="thumb" key={i}>
-            <img src={img.url} alt={`capture-${i}`} />
-            <button className="remove" onClick={() => removeImage(i)}>✕</button>
-          </div>
-        ))}
-      </div>
-    </section>
+      {/* Preview Grid */}
+      {images.length > 0 && (
+        <div className="preview-grid">
+          {images.map((img, i) => (
+            <div className="thumb-wrapper" key={i}>
+              <img src={img.url} alt="thumb" className="thumb-img" />
+              <button className="remove-btn" onClick={() => removeImage(i)}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
