@@ -21,3 +21,7 @@
 
 - Build a regression model based off the dataset to predict time and cost based off a host of inputs
 - Use some agent (TBC) which is able to take the natural language textfield from the frontend (what specs the builder has) and extract the features that need to be fed into the regression model. Go from there
+
+### Dataset
+
+Here's the dataset[https://www.kaggle.com/datasets/sasakitetsuya/construction-estimation-data]
