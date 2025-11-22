@@ -13,30 +13,86 @@ export default function App() {
   const [transcript, setTranscript] = useState("");
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [aiEstimate, setAiEstimate] = useState(null); // Estimate from voice/chat
+  const [conversationContext, setConversationContext] = useState("");
 
   // Handler for when AI generates an estimate from voice/chat
-  const handleAiEstimate = (estimateData, features) => {
-    setAiEstimate({
-      cost_gbp: estimateData.cost_gbp,
-      cost_dzd: estimateData.cost_dzd,
-      time_days: estimateData.time_days,
-      features: features
+  const handleAiEstimate = async (estimateData, features, materialsFromApi, tasksFromApi) => {
+    // Use materials and tasks from API, just add purchase links
+    const materials = await Promise.all((materialsFromApi || []).map(async (m) => {
+      let link = `https://www.google.com/search?q=${encodeURIComponent(m.name)}`;
+      
+      try {
+        const response = await valyu.search(`buy ${m.name} plumbing`, { maxNumResults: 1 });
+        if (response.results && response.results.length > 0) {
+          link = response.results[0].url;
+        }
+      } catch (err) {
+        console.warn(`Valyu search failed for ${m.name}`);
+      }
+      
+      return { ...m, link };
+    }));
+
+    const tasks = tasksFromApi || [];
+
+    // Calculate breakdown based on materials from API
+    const baseLabor = 75; // £75 per hour
+    const laborTotal = tasks.reduce((sum, task) => sum + task.hours * baseLabor, 0);
+    const materialsTotal = materials.reduce((sum, m) => sum + m.qty * m.unitPrice, 0);
+    const subtotal = laborTotal + materialsTotal;
+    const markup = Math.round(subtotal * 0.12 * 100) / 100;
+    const total = Math.round((subtotal + markup) * 100) / 100;
+
+    // Set estimate with both model prediction and detailed breakdown
+    setEstimate({
+      modelPrediction: {
+        cost: estimateData.cost_gbp,
+        time: estimateData.time_days
+      },
+      tasks,
+      materials,
+      breakdown: {
+        laborTotal: Math.round(laborTotal * 100) / 100,
+        materialsTotal: Math.round(materialsTotal * 100) / 100,
+        markup,
+        total
+      },
+      features,
+      note: `AI-generated estimate. Model prediction: £${estimateData.cost_gbp.toFixed(2)} | ${estimateData.time_days} days`
     });
   };
 
   async function handleEstimate() {
-    if (images.length === 0 && !transcript) {
+    // Check if we have context from conversation or transcript
+    const hasContext = conversationContext || transcript;
+    
+    if (images.length === 0 && !hasContext) {
       alert("Please upload a photo or describe the job first.");
       return;
     }
     setLoading(true);
-    setEstimate(null); // Clear previous estimate while loading
 
     try {
-      // Now we await the AI generation because it fetches real links
-      const result = await generateEstimate(images, transcript);
-      setEstimate(result);
+      // If we have conversation context or transcript, use ML model
+      if (hasContext) {
+        const contextToUse = conversationContext || transcript;
+        const response = await fetch('http://localhost:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: contextToUse })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.estimate && data.features) {
+            await handleAiEstimate(data.estimate, data.features, data.materials, data.tasks);
+          }
+        }
+      } else {
+        // Fall back to image-based estimation
+        const result = await generateEstimate(images, transcript);
+        setEstimate(result);
+      }
     } catch (error) {
       console.error("Estimation failed:", error);
       alert("Something went wrong generating the quote. Check console.");
@@ -150,6 +206,7 @@ export default function App() {
               transcript={transcript} 
               setTranscript={setTranscript}
               onEstimateReceived={handleAiEstimate}
+              onContextUpdate={setConversationContext}
             />
           </div>
 
@@ -160,166 +217,6 @@ export default function App() {
             {loading ? "Analyzing & Sourcing..." : "✨ Generate Quote & Materials"}
           </button>
         </div>
-
-        {/* Display AI-generated estimate from voice/chat */}
-        {aiEstimate && (
-          <div className="glass-card" style={{ marginTop: '20px' }}>
-            <div style={{ 
-              padding: '20px',
-              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.05))',
-              borderRadius: '12px',
-              border: '2px solid rgba(34, 197, 94, 0.3)'
-            }}>
-              <div style={{ 
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '20px'
-              }}>
-                <div style={{ fontSize: '2rem' }}>💰</div>
-                <div>
-                  <h2 style={{ 
-                    color: '#22c55e',
-                    fontSize: '1.5rem',
-                    fontWeight: 'bold',
-                    margin: 0
-                  }}>
-                    AI-Generated Estimate
-                  </h2>
-                  <p style={{ 
-                    color: 'var(--text-muted)',
-                    fontSize: '0.9rem',
-                    margin: '4px 0 0 0'
-                  }}>
-                    Based on your description
-                  </p>
-                </div>
-              </div>
-              
-              <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '16px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ 
-                  padding: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ 
-                    fontSize: '0.85rem',
-                    color: 'var(--text-muted)',
-                    marginBottom: '8px'
-                  }}>
-                    Cost (GBP)
-                  </div>
-                  <div style={{ 
-                    fontSize: '1.8rem',
-                    fontWeight: 'bold',
-                    color: '#22c55e'
-                  }}>
-                    £{aiEstimate.cost_gbp.toFixed(2)}
-                  </div>
-                </div>
-                
-                <div style={{ 
-                  padding: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ 
-                    fontSize: '0.85rem',
-                    color: 'var(--text-muted)',
-                    marginBottom: '8px'
-                  }}>
-                    Cost (DZD)
-                  </div>
-                  <div style={{ 
-                    fontSize: '1.8rem',
-                    fontWeight: 'bold',
-                    color: '#22c55e'
-                  }}>
-                    {aiEstimate.cost_dzd.toFixed(2)}
-                  </div>
-                </div>
-                
-                <div style={{ 
-                  padding: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ 
-                    fontSize: '0.85rem',
-                    color: 'var(--text-muted)',
-                    marginBottom: '8px'
-                  }}>
-                    Estimated Time
-                  </div>
-                  <div style={{ 
-                    fontSize: '1.8rem',
-                    fontWeight: 'bold',
-                    color: '#22c55e'
-                  }}>
-                    {aiEstimate.time_days} days
-                  </div>
-                </div>
-              </div>
-
-              {aiEstimate.features && Object.keys(aiEstimate.features).length > 0 && (
-                <div style={{ 
-                  marginTop: '16px',
-                  padding: '12px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ 
-                    fontSize: '0.85rem',
-                    color: 'var(--text-muted)',
-                    marginBottom: '8px',
-                    fontWeight: 'bold'
-                  }}>
-                    Detected Features:
-                  </div>
-                  <div style={{ 
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px'
-                  }}>
-                    {Object.entries(aiEstimate.features).map(([key, value]) => (
-                      <span key={key} style={{
-                        padding: '4px 12px',
-                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                        borderRadius: '12px',
-                        fontSize: '0.8rem',
-                        color: '#22c55e'
-                      }}>
-                        {key}: {typeof value === 'boolean' ? (value ? '✓' : '✗') : value}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <button 
-                onClick={() => setAiEstimate(null)}
-                style={{
-                  marginTop: '16px',
-                  padding: '8px 16px',
-                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: '6px',
-                  color: '#ef4444',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  width: '100%'
-                }}
-              >
-                Clear Estimate
-              </button>
-            </div>
-          </div>
-        )}
 
         {estimate && <EstimateCard estimate={estimate} />}
       </main>
