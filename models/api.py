@@ -13,13 +13,13 @@ Endpoints:
 
 import os
 from typing import Optional
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from dotenv import load_dotenv
-
-from services.feature_extractor import FeatureExtractor
 from predict import PlumbingPredictor
+from pydantic import BaseModel, Field
+from services.feature_extractor import FeatureExtractor
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +28,7 @@ load_dotenv()
 app = FastAPI(
     title="Plumbing Cost Estimator API",
     description="Get cost and time estimates for plumbing jobs using natural language descriptions",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add CORS middleware to allow frontend requests
@@ -52,6 +52,7 @@ def dzd_to_gbp(dzd_amount: float, exchange_rate: float = DZD_TO_GBP_RATE) -> flo
 # Initialize services (singleton pattern)
 class Services:
     """Singleton class to hold initialized services."""
+
     _extractor: Optional[FeatureExtractor] = None
     _predictor: Optional[PlumbingPredictor] = None
 
@@ -79,17 +80,19 @@ class Services:
 # Pydantic models for request/response validation
 class EstimateRequest(BaseModel):
     """Request model for job estimation."""
+
     job_description: str = Field(
         ...,
         min_length=10,
         max_length=1000,
         description="Natural language description of the plumbing job",
-        example="I need a luxury bathroom with a wall-hung toilet, luxury shower, and a pedestal sink"
+        example="I need a luxury bathroom with a wall-hung toilet, luxury shower, and a pedestal sink",
     )
 
 
 class EstimateResponse(BaseModel):
     """Response model for job estimation."""
+
     success: bool = Field(description="Whether the estimation was successful")
     job_description: str = Field(description="Original job description")
     cost_dzd: float = Field(description="Estimated cost in Algerian Dinar")
@@ -109,14 +112,15 @@ class EstimateResponse(BaseModel):
                     "toilet": 1,
                     "toileType": "Wall-Hung",
                     "showerCabin": 1,
-                    "showerCabinType": "Luxury_Enclosure"
-                }
+                    "showerCabinType": "Luxury_Enclosure",
+                },
             }
         }
 
 
 class ErrorResponse(BaseModel):
     """Error response model."""
+
     success: bool = False
     error: str = Field(description="Error message")
     detail: Optional[str] = Field(None, description="Detailed error information")
@@ -134,8 +138,8 @@ async def root():
             "POST /estimate": "Get estimate from job description",
             "GET /health": "Health check",
             "GET /docs": "API documentation (Swagger UI)",
-            "GET /redoc": "API documentation (ReDoc)"
-        }
+            "GET /redoc": "API documentation (ReDoc)",
+        },
     }
 
 
@@ -148,16 +152,10 @@ async def health_check():
         Services.get_predictor()
         return {
             "status": "healthy",
-            "services": {
-                "feature_extractor": "ready",
-                "predictor": "ready"
-            }
+            "services": {"feature_extractor": "ready", "predictor": "ready"},
         }
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        return {"status": "unhealthy", "error": str(e)}
 
 
 @app.post("/estimate", response_model=EstimateResponse)
@@ -191,46 +189,33 @@ async def estimate_job(request: EstimateRequest):
         prediction = predictor.predict(features)
 
         # Convert currency
-        cost_dzd = prediction['cost']
+        cost_dzd = prediction["cost"]
         cost_gbp = dzd_to_gbp(cost_dzd)
-        time_days = prediction['time']
+        time_days = prediction["time"]
 
         # Return response
         return EstimateResponse(
             success=True,
             job_description=request.job_description,
-            cost_dzd=round(cost_dzd, 2),
             cost_gbp=round(cost_gbp, 2),
-            time_days=round(time_days, 1),
-            features=features
+            time_days=round(time_days / 15, 0),
+            features=features,
         )
 
     except ValueError as e:
         raise HTTPException(
             status_code=400,
-            detail={
-                "success": False,
-                "error": "Invalid input",
-                "detail": str(e)
-            }
+            detail={"success": False, "error": "Invalid input", "detail": str(e)},
         )
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=500,
-            detail={
-                "success": False,
-                "error": "Model not found",
-                "detail": str(e)
-            }
+            detail={"success": False, "error": "Model not found", "detail": str(e)},
         )
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail={
-                "success": False,
-                "error": "Estimation failed",
-                "detail": str(e)
-            }
+            detail={"success": False, "error": "Estimation failed", "detail": str(e)},
         )
 
 
@@ -263,7 +248,9 @@ async def startup_event():
     except Exception as e:
         print(f"\n❌ Error initializing services: {e}")
         print("\nPlease ensure:")
-        print("  1. Model file exists at models/production/plumbing_model_v1.0.0.joblib")
+        print(
+            "  1. Model file exists at models/production/plumbing_model_v1.0.0.joblib"
+        )
         print("  2. OPENAI_API_KEY is set in .env file")
         print("  3. All dependencies are installed (pip install -r requirements.txt)")
         raise
@@ -271,4 +258,5 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
