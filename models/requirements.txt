@@ -9,7 +9,10 @@ joblib>=1.2.0
 openai>=1.0.0
 python-dotenv>=1.0.0
 
-# Optional: Web API Framework (uncomment if building REST API)
-# fastapi>=0.104.0
-# uvicorn[standard]>=0.24.0
-# pydantic>=2.0.0
+# Web API Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+
+# HTTP Client for Testing
+requests>=2.31.0
