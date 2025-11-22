@@ -1,8 +1,12 @@
 /* App.jsx */
 import React, { useState } from "react";
+import { Valyu } from "valyu-js"; // Import the library
 import CameraCapture from "./components/CameraCapture";
 import VoiceRecorder from "./components/VoiceRecorder";
 import EstimateCard from "./components/EstimateCard";
+
+// Initialize the client 
+const valyu = new Valyu("EqsAMTZKpW28845oSgHcm7FkekXKxi6K2qbkIUhu");
 
 export default function App() {
   const [images, setImages] = useState([]);
@@ -11,57 +15,86 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   async function handleEstimate() {
-    if(images.length === 0 && !transcript) {
-        alert("Please upload a photo or describe the job first.");
-        return;
+    if (images.length === 0 && !transcript) {
+      alert("Please upload a photo or describe the job first.");
+      return;
     }
     setLoading(true);
-    // Placeholder logic simulation
-    const result = generateEstimate(images, transcript);
-    await new Promise((r) => setTimeout(r, 1500)); // Longer delay for effect
-    setEstimate(result);
-    setLoading(false);
+    setEstimate(null); // Clear previous estimate while loading
+
+    try {
+      // Now we await the AI generation because it fetches real links
+      const result = await generateEstimate(images, transcript);
+      setEstimate(result);
+    } catch (error) {
+      console.error("Estimation failed:", error);
+      alert("Something went wrong generating the quote. Check console.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // (Keep your existing generateEstimate logic here exactly as it was)
-  function generateEstimate(images, transcript) {
-    const baseLabor = 75; 
+  // Converted to ASYNC function to handle API calls
+  async function generateEstimate(images, transcript) {
+    const baseLabor = 75;
     const imageFactor = Math.min(4, Math.max(1, images.length));
     let tasks = [];
-    let materials = [];
+    let rawMaterials = [];
 
     const text = transcript.toLowerCase();
+    
+    // 1. Determine logic (Placeholder simulation)
     if (text.includes("leak") || text.includes("pipe")) {
       tasks.push({ title: "Diagnose leak", hours: 1 });
       tasks.push({ title: "Replace pipe section", hours: 2 });
-      materials.push({ name: "1/2\" PVC pipe (2ft)", qty: 1, unitPrice: 12 });
-      materials.push({ name: "Pipe coupler", qty: 1, unitPrice: 4 });
+      rawMaterials.push({ name: "1/2\" PVC pipe", qty: 1, unitPrice: 12 });
+      rawMaterials.push({ name: "PVC Pipe coupler", qty: 1, unitPrice: 4 });
     } else if (text.includes("landscap") || text.includes("sod") || text.includes("mulch")) {
       tasks.push({ title: "Site prep", hours: 2 });
       tasks.push({ title: "Install mulch/sod", hours: 3 * imageFactor });
-      materials.push({ name: "Mulch (cu ft)", qty: 12 * imageFactor, unitPrice: 4 });
-      materials.push({ name: "Sod (sq ft)", qty: 50 * imageFactor, unitPrice: 0.8 });
+      rawMaterials.push({ name: "Bag of Mulch", qty: 12 * imageFactor, unitPrice: 4 });
+      rawMaterials.push({ name: "Sod roll", qty: 50 * imageFactor, unitPrice: 8 });
     } else {
       tasks.push({ title: "General repair/inspection", hours: 1 * imageFactor });
-      materials.push({ name: "Assorted fasteners", qty: 1, unitPrice: 8 });
+      rawMaterials.push({ name: "Assorted fasteners box", qty: 1, unitPrice: 8 });
     }
 
+    // 2. Fetch REAL links using Valyu
+    // We use Promise.all to fetch all links in parallel (faster)
+    const materialsWithLinks = await Promise.all(rawMaterials.map(async (m) => {
+      let realUrl = `https://www.google.com/search?q=${encodeURIComponent(m.name)}`; // Fallback
+      
+      try {
+        // Search specifically for buying the item
+        const response = await valyu.search(`buy ${m.name} home depot`, { 
+          maxNumResults: 1 
+        });
+        
+        if (response.results && response.results.length > 0) {
+           realUrl = response.results[0].url;
+        }
+      } catch (err) {
+        console.warn(`Valyu search failed for ${m.name}, using fallback.`, err);
+      }
+
+      return {
+        ...m,
+        link: realUrl
+      };
+    }));
+
+    // 3. Calculate Totals
     const laborTotal = tasks.reduce((s, t) => s + t.hours * baseLabor, 0);
-    const materialsTotal = materials.reduce((s, m) => s + m.qty * m.unitPrice, 0);
+    const materialsTotal = materialsWithLinks.reduce((s, m) => s + m.qty * m.unitPrice, 0);
     const subtotal = Math.round((laborTotal + materialsTotal) * 100) / 100;
     const markup = Math.round(subtotal * 0.12 * 100) / 100;
     const total = Math.round((subtotal + markup) * 100) / 100;
-
-    const materialsWithLinks = materials.map((m) => ({
-      ...m,
-      link: `https://www.homedepot.com/s/${encodeURIComponent(m.name)}`,
-    }));
 
     return {
       tasks,
       materials: materialsWithLinks,
       breakdown: { laborTotal, materialsTotal, markup, total },
-      note: "Instant on-site estimate. Final quote subject to inspection."
+      note: "Instant on-site estimate. Prices sourced via Valyu AI."
     };
   }
 
@@ -109,7 +142,7 @@ export default function App() {
 
         <div className="action-area">
           <button className="cta-btn" onClick={handleEstimate} disabled={loading}>
-            {loading ? "Analyzing Job Site..." : "✨ Generate Quote & Materials"}
+            {loading ? "Analyzing & Sourcing..." : "✨ Generate Quote & Materials"}
           </button>
         </div>
 
