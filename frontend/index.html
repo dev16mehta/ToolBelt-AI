@@ -3,9 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
     <title>Toolbelt AI — Instant Estimator</title>
+
+    <!-- Vibrant, modern fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- small inline icon to improve polish -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect rx='12' width='100%25' height='100%25' fill='%23ff8a00'/%3E%3Ctext x='50%25' y='54%25' font-size='36' font-family='Poppins,Arial' text-anchor='middle' fill='%23081212'%3ET%3C/text%3E%3C/svg%3E">
+
+    <!-- keep Vite entry -->
   </head>
   <body>
+    <!-- Animated background layers — purely decorative -->
+    <div id="bg-visuals" aria-hidden="true">
+      <div class="blob b1"></div>
+      <div class="blob b2"></div>
+      <div class="blob b3"></div>
+      <svg class="grid" width="100%" height="100%" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ff8a00"/><stop offset="1" stop-color="#00e0ff"/></linearGradient></defs>
+        <rect width="100%" height="100%" fill="none"></rect>
+      </svg>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
