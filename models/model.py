@@ -21,7 +21,7 @@ from save_models import save_plumbing_models
 warnings.filterwarnings("ignore")
 
 # ==================== CONFIGURATION ====================
-DATA_PATH = "/Users/jt/Documents/GitHub/ToolBelt-AI/plumbing_service_data.csv"
+DATA_PATH = "/Users/jt/Documents/GitHub/ToolBelt-AI/models/plumbing_service_data.csv"
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 CV_FOLDS = 5

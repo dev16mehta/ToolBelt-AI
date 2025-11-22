@@ -31,9 +31,10 @@ The data should already be loaded into a variable called `df` as mentioned in th
 
 ### Step 3: Run the Model
 
-Simply run the Python script from your terminal or command prompt:
+From the `models/` directory, run the Python script from your terminal or command prompt:
 
 ```bash
+cd models
 python model.py
 ```
 
@@ -220,9 +221,10 @@ The trained models are saved in the `models/production/` directory:
 
 #### Option 1: Quick Example Prediction
 
-Run a prediction on example data:
+From the `models/` directory, run a prediction on example data:
 
 ```bash
+cd models
 python predict.py --example
 ```
 
@@ -257,9 +259,10 @@ Create a JSON file with your job specifications (e.g., `my_job.json`):
 }
 ```
 
-Then run:
+Then run from the `models/` directory:
 
 ```bash
+cd models
 python predict.py --input-file my_job.json
 ```
 
@@ -267,9 +270,10 @@ The results will be displayed on screen and saved to `my_job.output.json`.
 
 #### Option 3: Batch Predictions
 
-If you have multiple jobs in a CSV file:
+If you have multiple jobs in a CSV file (from the `models/` directory):
 
 ```bash
+cd models
 python predict.py --batch jobs.csv
 ```
 
@@ -277,11 +281,13 @@ Results will be saved to `jobs.predictions.csv` with cost and time for each job.
 
 #### Option 4: Use in Python Code
 
+From the `models/` directory or with proper Python path:
+
 ```python
 from predict import PlumbingPredictor
 
-# Load the trained model
-predictor = PlumbingPredictor("models/production/plumbing_model_v1.0.0.joblib")
+# Load the trained model (relative path from models/ directory)
+predictor = PlumbingPredictor("production/plumbing_model_v1.0.0.joblib")
 
 # Define your job specifications
 job = {
@@ -340,7 +346,7 @@ For comprehensive model documentation including:
 - API integration examples
 - Model architecture details
 
-See: **[models/README.md](models/README.md)**
+See: **[README.md](README.md)**
 
 ---
 

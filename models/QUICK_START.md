@@ -8,9 +8,10 @@ Your plumbing service prediction models can now be **exported and used for predi
 
 ## Step 1: Train and Export Models
 
-Run the training script (this will automatically save the models):
+From the `models/` directory, run the training script (this will automatically save the models):
 
 ```bash
+cd models
 python model.py
 ```
 
@@ -30,7 +31,10 @@ python model.py
 
 ### Option A: Quick Example
 
+From the `models/` directory:
+
 ```bash
+cd models
 python predict.py --example
 ```
 
@@ -65,8 +69,9 @@ Create `my_job.json`:
 }
 ```
 
-Run prediction:
+Run prediction from the `models/` directory:
 ```bash
+cd models
 python predict.py --input-file my_job.json
 ```
 
@@ -74,8 +79,9 @@ Results saved to: `my_job.output.json`
 
 ### Option C: Batch Processing
 
-Process multiple jobs from CSV:
+Process multiple jobs from CSV (from the `models/` directory):
 ```bash
+cd models
 python predict.py --batch jobs.csv
 ```
 
@@ -83,11 +89,13 @@ Results saved to: `jobs.predictions.csv`
 
 ### Option D: Python Integration
 
+From the `models/` directory or with proper Python path:
+
 ```python
 from predict import PlumbingPredictor
 
 # Load model once (reuse for multiple predictions)
-predictor = PlumbingPredictor("models/production/plumbing_model_v1.0.0.joblib")
+predictor = PlumbingPredictor("production/plumbing_model_v1.0.0.joblib")
 
 # Make prediction
 job = {
@@ -105,9 +113,10 @@ print(f"Time: {result['time_formatted']}")
 
 ## Step 3: Verify Installation (Optional)
 
-Test the complete pipeline:
+Test the complete pipeline from the `models/` directory:
 
 ```bash
+cd models
 python test_prediction.py
 ```
 
@@ -155,18 +164,20 @@ Every prediction requires these features:
 
 ```
 ToolBelt-AI/
-├── model.py                    # Training script (run first)
-├── save_models.py             # Serialization utilities
-├── predict.py                 # Prediction script
-├── test_prediction.py         # Testing script
 ├── models/
+│   ├── model.py                    # Training script (run first)
+│   ├── save_models.py              # Serialization utilities
+│   ├── predict.py                  # Prediction script
+│   ├── test_prediction.py          # Testing script
+│   ├── plumbing_service_data.csv   # Training data
+│   ├── model_instructions.md       # User guide
+│   ├── QUICK_START.md              # This file
+│   ├── README.md                   # Detailed documentation
 │   ├── production/
 │   │   ├── plumbing_model_v1.0.0.joblib
 │   │   └── metadata_v1.0.0.json
-│   ├── archived/              # Old versions
-│   └── README.md              # Detailed documentation
-├── model_instructions.md      # User guide
-└── QUICK_START.md            # This file
+│   └── archived/                   # Old model versions
+└── frontend/                       # Web application
 ```
 
 ---
@@ -174,7 +185,7 @@ ToolBelt-AI/
 ## Common Issues
 
 ### "Model file not found"
-**Solution:** Run `python model.py` first to train and export the models.
+**Solution:** From the `models/` directory, run `python model.py` first to train and export the models.
 
 ### "Module not found: numpy/pandas/sklearn"
 **Solution:** Install dependencies:
@@ -232,7 +243,7 @@ pip install pandas numpy scikit-learn xgboost
 
 - **Quick reference:** This file
 - **User guide:** [model_instructions.md](model_instructions.md)
-- **Model details:** [models/README.md](models/README.md)
+- **Model details:** [README.md](README.md)
 - **Training code:** [model.py](model.py)
 - **Prediction code:** [predict.py](predict.py)
 
@@ -248,7 +259,7 @@ You now have a **complete model export and prediction system**:
 ✅ Comprehensive documentation with performance metrics
 ✅ Production-ready code with 97.67% cost accuracy
 
-**To get started:** Run `python model.py` then `python predict.py --example`
+**To get started:** From the `models/` directory, run `cd models && python model.py` then `python predict.py --example`
 
 ---
 

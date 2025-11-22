@@ -97,13 +97,15 @@ Raw Input → Ordinal Encoding → One-Hot Encoding → StandardScaler → Ridge
 
 ### Using the Prediction Script
 
-**Example prediction:**
+**Example prediction (from the `models/` directory):**
 ```bash
+cd models
 python predict.py --example
 ```
 
-**Predict from JSON file:**
+**Predict from JSON file (from the `models/` directory):**
 ```bash
+cd models
 python predict.py --input-file my_job.json
 ```
 
@@ -130,18 +132,21 @@ Example `my_job.json`:
 }
 ```
 
-**Batch prediction from CSV:**
+**Batch prediction from CSV (from the `models/` directory):**
 ```bash
+cd models
 python predict.py --batch jobs.csv
 ```
 
 ### Using in Python Code
 
+From the `models/` directory or with proper Python path:
+
 ```python
 from predict import PlumbingPredictor
 
-# Load the model
-predictor = PlumbingPredictor("models/production/plumbing_model_v1.0.0.joblib")
+# Load the model (relative path from models/ directory)
+predictor = PlumbingPredictor("production/plumbing_model_v1.0.0.joblib")
 
 # Make a prediction
 input_data = {
@@ -249,11 +254,12 @@ To retrain with new data:
 
 ```bash
 # 1. Update the CSV file with new records
-# 2. Run the training script
+# 2. From the models/ directory, run the training script
+cd models
 python model.py
 
-# 3. Models will be automatically saved to models/production/
-# 4. Previous version moved to models/archived/
+# 3. Models will be automatically saved to production/
+# 4. Previous version moved to archived/
 ```
 
 **Recommended retraining frequency:** Quarterly, or when:
@@ -298,9 +304,9 @@ Import `PlumbingPredictor` class directly into your application code.
 ## Support & Contact
 
 For questions about the models:
-1. Review the main [model_instructions.md](../model_instructions.md) guide
+1. Review the main [model_instructions.md](model_instructions.md) guide
 2. Check the metadata JSON for detailed model configuration
-3. Review the training script [model.py](../model.py) for implementation details
+3. Review the training script [model.py](model.py) for implementation details
 
 ---
 
